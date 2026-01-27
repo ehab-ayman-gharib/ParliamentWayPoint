@@ -5,9 +5,9 @@ import { useState, useEffect } from 'react';
 
 const destinations = [
     { name: 'Conference Room A', position: [-109.61, 0.7, 51.2] },
-    { name: 'Conference Room B', position: [-15, 0, -10] },
-    { name: 'Grand Hall', position: [5, 0, -15] },
-    { name: 'Office Suite 101', position: [-20, 0, 10] },
+    { name: 'Conference Room B', position: [-170.8, 0.7, 336.56] },
+    { name: 'Grand Hall', position: [59.79, 0.7, -173.89] },
+    { name: 'Office Suite 1', position: [-208.46, 0.7, 163.99] },
 ];
 
 export default function UI() {
@@ -61,7 +61,13 @@ export default function UI() {
                     >
                         {isNavigating ? 'NAVIGATING...' : 'START NAVIGATION'}
                     </button>
-                    <button onClick={reset} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'white', padding: '0.6rem' }}>
+                    <button onClick={reset} style={{
+                        background: 'transparent',
+                        border: '1px solid rgba(15, 23, 42, 0.3)',
+                        color: '#0f172a',
+                        padding: '0.6rem',
+                        fontWeight: 600
+                    }}>
                         RESET
                     </button>
                 </div>

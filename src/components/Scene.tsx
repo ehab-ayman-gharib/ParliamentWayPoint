@@ -9,14 +9,23 @@ import PathLine from './PathLine';
 import { navService } from '@/utils/NavigationService';
 
 export default function Scene() {
-    const { scene, nodes } = useGLTF('/SM_Parliament.glb');
+    const { scene, nodes } = useGLTF('./SM_Parliament.glb');
     const controlsRef = useRef<CameraControls>(null);
+    const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
     const { viewMode, isNavigating, destination, startPoint, setPath, path, setIsNavigating, reset, setIsLoading, setArrivedAt } = useStore();
 
     const [currentPathIndex, setCurrentPathIndex] = useState(0);
     const [agentPos] = useState(() => new THREE.Vector3(...startPoint));
     const [isNavMeshReady, setIsNavMeshReady] = useState(false);
     const [hasArrived, setHasArrived] = useState(false);
+
+    // Clear timer on manual reset/start
+    useEffect(() => {
+        if (isNavigating && resetTimerRef.current) {
+            clearTimeout(resetTimerRef.current);
+            resetTimerRef.current = null;
+        }
+    }, [isNavigating]);
 
     // Initialize NavMesh and Log Size
     useEffect(() => {
@@ -29,11 +38,19 @@ export default function Scene() {
 
             setIsLoading(true, 'Building Navigation Mesh...');
 
-            navService.init(scene as THREE.Group).then(ready => {
-                setIsNavMeshReady(ready);
-                setIsLoading(false);
-                console.log('NavMesh Ready:', ready);
-            });
+            // Delay baking slightly to let UI update
+            setTimeout(() => {
+                navService.init(scene as THREE.Group).then(ready => {
+                    setIsNavMeshReady(ready);
+
+                    // Artificial delay to prevent "flicker" finish
+                    setTimeout(() => {
+                        setIsLoading(false);
+                    }, 2000);
+
+                    console.log('NavMesh Ready:', ready);
+                });
+            }, 100);
         }
     }, [scene]);
 
@@ -207,9 +224,11 @@ export default function Scene() {
                     true
                 );
 
-                setTimeout(() => {
+                // Store timer in ref so it can be cleared
+                resetTimerRef.current = setTimeout(() => {
                     reset(); // Clear path, destination, return to overview
                     setHasArrived(false);
+                    resetTimerRef.current = null;
                 }, 10000); // 10 second delay to let user see arrival
             }
         }
@@ -220,17 +239,15 @@ export default function Scene() {
             {/* Removed Center to ensure Unity coordinates match Navigation Space */}
             <primitive
                 object={scene}
-            // onClick disabled - use dropdown to select destinations
-            // onClick={(e: any) => {
-            //     e.stopPropagation();
-            //     const point = e.point;
-            //     const x = Math.round(point.x * 100) / 100;
-            //     const y = 0;
-            //     const z = Math.round(point.z * 100) / 100;
-            //     console.log('🎯 Clicked position:', { x, y, z });
-            //     const { setStartPoint } = useStore.getState();
-            //     setStartPoint([x, y, z]);
-            // }}
+                onClick={(e: any) => {
+                    e.stopPropagation();
+                    const point = e.point;
+                    const x = parseFloat(point.x.toFixed(2));
+                    const y = parseFloat(point.y.toFixed(2));
+                    const z = parseFloat(point.z.toFixed(2));
+                    console.log(`📍 Clicked Coordinate: [${x}, ${y}, ${z}]`);
+                    console.log(`📋 JSON format: { name: "New Point", position: [${x}, ${y}, ${z}] }`);
+                }}
             />
 
             <Environment preset="city" />

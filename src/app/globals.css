@@ -12,7 +12,9 @@
   margin: 0;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   width: 100%;
   overflow: hidden;
@@ -43,7 +45,7 @@ html, body, #root {
   padding: 2rem;
 }
 
-.ui-overlay > * {
+.ui-overlay>* {
   pointer-events: auto;
 }
 
@@ -61,11 +63,11 @@ html, body, #root {
 
 .title {
   font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.05rem;
-  background: linear-gradient(to right, #fff, #888);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+  letter-spacing: 0.05rem;
+  color: #0f172a;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
 }
 
 .controls {
@@ -130,10 +132,25 @@ button:not(:disabled):hover {
 }
 
 @keyframes fadeInOut {
-  0% { opacity: 0; transform: translate(-50%, -40%); }
-  10% { opacity: 1; transform: translate(-50%, -50%); }
-  90% { opacity: 1; transform: translate(-50%, -50%); }
-  100% { opacity: 0; transform: translate(-50%, -60%); }
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -40%);
+  }
+
+  10% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+
+  90% {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60%);
+  }
 }
 
 .loading-screen {

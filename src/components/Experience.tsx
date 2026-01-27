@@ -16,12 +16,8 @@ function LoadingOverlay() {
         <div className="loading-overlay">
             <div className="loading-content">
                 <div className="loading-spinner"></div>
-                <p className="loading-title">Loading Experience</p>
-                <div className="loading-dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
+                <h1 className="welcome-text">Welcome to the Egyptian Parliament WayFinder</h1>
+                <p className="loading-status">Loading Experience...</p>
             </div>
 
             <style jsx>{`
@@ -31,7 +27,9 @@ function LoadingOverlay() {
                     left: 0;
                     width: 100%;
                     height: 100%;
-                    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+                    background: rgba(15, 23, 42, 0.85);
+                    backdrop-filter: blur(20px);
+                    -webkit-backdrop-filter: blur(20px);
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -41,15 +39,18 @@ function LoadingOverlay() {
                 .loading-content {
                     text-align: center;
                     color: white;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
                 }
                 
                 .loading-spinner {
-                    width: 50px;
-                    height: 50px;
+                    width: 60px;
+                    height: 60px;
                     border: 3px solid rgba(255, 255, 255, 0.1);
                     border-top-color: #00f2ff;
                     border-radius: 50%;
-                    margin: 0 auto 24px;
+                    margin-bottom: 30px;
                     animation: spin 1s linear infinite;
                 }
                 
@@ -57,34 +58,20 @@ function LoadingOverlay() {
                     to { transform: rotate(360deg); }
                 }
                 
-                .loading-title {
-                    font-size: 1.2rem;
-                    font-weight: 500;
-                    color: rgba(255, 255, 255, 0.9);
-                    margin-bottom: 16px;
+                .welcome-text {
+                    font-size: 1.8rem;
+                    font-weight: 300;
+                    letter-spacing: 1px;
+                    color: white;
+                    margin-bottom: 15px;
+                    text-transform: uppercase;
                 }
                 
-                .loading-dots {
-                    display: flex;
-                    justify-content: center;
-                    gap: 6px;
-                }
-                
-                .loading-dots span {
-                    width: 8px;
-                    height: 8px;
-                    background: #00f2ff;
-                    border-radius: 50%;
-                    animation: bounce 1.4s infinite ease-in-out both;
-                }
-                
-                .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
-                .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
-                .loading-dots span:nth-child(3) { animation-delay: 0s; }
-                
-                @keyframes bounce {
-                    0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
-                    40% { transform: scale(1); opacity: 1; }
+                .loading-status {
+                    font-size: 1rem;
+                    color: rgba(255, 255, 255, 0.5);
+                    text-transform: uppercase;
+                    letter-spacing: 2px;
                 }
             `}</style>
         </div>
