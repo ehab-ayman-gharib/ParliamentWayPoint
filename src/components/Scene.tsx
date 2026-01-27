@@ -11,31 +11,28 @@ import { navService } from '@/utils/NavigationService';
 export default function Scene() {
     const { scene, nodes } = useGLTF('/SM_Parliament.glb');
     const controlsRef = useRef<CameraControls>(null);
-    const { viewMode, isNavigating, destination, startPoint, setPath, path, setIsNavigating } = useStore();
+    const { viewMode, isNavigating, destination, startPoint, setPath, path, setIsNavigating, reset, setIsLoading, setArrivedAt } = useStore();
 
     const [currentPathIndex, setCurrentPathIndex] = useState(0);
     const [agentPos] = useState(() => new THREE.Vector3(...startPoint));
     const [isNavMeshReady, setIsNavMeshReady] = useState(false);
+    const [hasArrived, setHasArrived] = useState(false);
 
     // Initialize NavMesh and Log Size
     useEffect(() => {
         if (scene) {
+            setIsLoading(true, 'Loading 3D Model...');
+
             const box = new THREE.Box3().setFromObject(scene as THREE.Group);
             const size = box.getSize(new THREE.Vector3());
             console.log('Model Bounding Box Size:', size);
 
+            setIsLoading(true, 'Building Navigation Mesh...');
+
             navService.init(scene as THREE.Group).then(ready => {
                 setIsNavMeshReady(ready);
+                setIsLoading(false);
                 console.log('NavMesh Ready:', ready);
-
-                // if (ready) {
-                //     // VISUAL DEBUG: Show the NavMesh (disabled for clean view)
-                //     const debugMesh = navService.createDebugNavMesh(scene as THREE.Group);
-                //     if (debugMesh) {
-                //         (scene as THREE.Group).add(debugMesh);
-                //         console.log('✅ Added Debug NavMesh to scene');
-                //     }
-                // }
             });
         }
     }, [scene]);
@@ -105,6 +102,7 @@ export default function Scene() {
             // Reset agent position to start point
             agentPos.set(...startPoint);
             setCurrentPathIndex(0);
+            setHasArrived(false); // Reset arrived state
 
             // Get first path point and calculate initial camera position
             const firstPoint = path[0];
@@ -128,61 +126,97 @@ export default function Scene() {
         }
     }, [isNavigating]);
 
+    // Store last valid direction for camera on arrival
+    const lastDirection = useRef(new THREE.Vector3(0, 0, 1));
+
     // Navigation Logic Loop - Camera follows path
     useFrame((state, delta) => {
-        if (isNavigating && path.length > 0 && controlsRef.current) {
-            const targetPoint = path[currentPathIndex];
+        // Stop updating if arrived or not navigating
+        if (!isNavigating || hasArrived || path.length === 0 || !controlsRef.current) return;
 
-            // Constant speed movement (not lerp which slows at corners)
-            const speed = 30; // units per second
-            const direction = new THREE.Vector3()
-                .subVectors(targetPoint, agentPos)
-                .normalize();
+        const targetPoint = path[currentPathIndex];
 
-            const moveDistance = speed * delta;
-            const distanceToTarget = agentPos.distanceTo(targetPoint);
+        // Constant speed movement (not lerp which slows at corners)
+        const speed = 50; // units per second
+        const direction = new THREE.Vector3()
+            .subVectors(targetPoint, agentPos);
 
-            if (distanceToTarget > moveDistance) {
-                // Move toward target at constant speed
-                agentPos.add(direction.multiplyScalar(moveDistance));
+        const distanceToTarget = direction.length();
+        direction.normalize();
+
+        // Store last valid direction
+        if (direction.length() > 0.1) {
+            lastDirection.current.copy(direction);
+        }
+
+        const moveDistance = speed * delta;
+
+        if (distanceToTarget > moveDistance) {
+            // Move toward target at constant speed
+            agentPos.add(direction.clone().multiplyScalar(moveDistance));
+        } else {
+            // Snap to target if very close
+            agentPos.copy(targetPoint);
+        }
+
+        // Calculate direction for camera (look ahead 2 waypoints)
+        const lookAheadIndex = Math.min(currentPathIndex + 2, path.length - 1);
+        const lookAheadPoint = path[lookAheadIndex];
+        const camDirection = new THREE.Vector3()
+            .subVectors(lookAheadPoint, agentPos);
+
+        // Use last good direction if current is too small
+        if (camDirection.length() > 1) {
+            camDirection.normalize();
+            lastDirection.current.copy(camDirection);
+        } else {
+            camDirection.copy(lastDirection.current);
+        }
+
+        // Camera position: behind and above the agent
+        const cameraHeight = 20;
+        const cameraDistance = 25;
+        const camOffset = camDirection.clone().multiplyScalar(-cameraDistance).add(new THREE.Vector3(0, cameraHeight, 0));
+        const camPos = agentPos.clone().add(camOffset);
+
+        // Look ahead of the agent (not at it) - raised to look at horizon
+        const lookTarget = agentPos.clone().add(camDirection.clone().multiplyScalar(20));
+        lookTarget.y = agentPos.y + 8; // Higher look target for better forward view
+
+        // Smooth camera follow
+        controlsRef.current.setLookAt(
+            camPos.x, camPos.y, camPos.z,
+            lookTarget.x, lookTarget.y, lookTarget.z,
+            true // smooth interpolation
+        );
+
+        // Check if reached current waypoint
+        if (distanceToTarget < 1.0) {
+            if (currentPathIndex < path.length - 1) {
+                setCurrentPathIndex(prev => prev + 1);
             } else {
-                // Snap to target if very close
-                agentPos.copy(targetPoint);
-            }
+                // Reached destination - freeze camera and schedule reset
+                setHasArrived(true);
+                setArrivedAt(destination?.name || 'Destination');
+                console.log('🎯 Arrived at destination!');
 
-            // Calculate direction for camera (look ahead 2 waypoints)
-            const lookAheadIndex = Math.min(currentPathIndex + 2, path.length - 1);
-            const lookAheadPoint = path[lookAheadIndex];
-            const camDirection = new THREE.Vector3()
-                .subVectors(lookAheadPoint, agentPos)
-                .normalize();
+                // Set final camera position looking at destination
+                const finalCamPos = agentPos.clone().add(
+                    lastDirection.current.clone().multiplyScalar(-cameraDistance)
+                ).add(new THREE.Vector3(0, cameraHeight, 0));
+                const finalLookTarget = agentPos.clone().add(lastDirection.current.clone().multiplyScalar(10));
+                finalLookTarget.y = agentPos.y + 5;
 
-            // Camera position: behind and above the agent
-            const cameraHeight = 20;
-            const cameraDistance = 25;
-            const camOffset = camDirection.clone().multiplyScalar(-cameraDistance).add(new THREE.Vector3(0, cameraHeight, 0));
-            const camPos = agentPos.clone().add(camOffset);
+                controlsRef.current.setLookAt(
+                    finalCamPos.x, finalCamPos.y, finalCamPos.z,
+                    finalLookTarget.x, finalLookTarget.y, finalLookTarget.z,
+                    true
+                );
 
-            // Look ahead of the agent (not at it) - raised to look at horizon
-            const lookTarget = agentPos.clone().add(camDirection.multiplyScalar(20));
-            lookTarget.y = agentPos.y + 8; // Higher look target for better forward view
-
-            // Smooth camera follow
-            controlsRef.current.setLookAt(
-                camPos.x, camPos.y, camPos.z,
-                lookTarget.x, lookTarget.y, lookTarget.z,
-                true // smooth interpolation
-            );
-
-            // Check if reached current waypoint
-            if (distanceToTarget < 1.0) {
-                if (currentPathIndex < path.length - 1) {
-                    setCurrentPathIndex(prev => prev + 1);
-                } else {
-                    // Reached destination
-                    setIsNavigating(false);
-                    console.log('🎯 Arrived at destination!');
-                }
+                setTimeout(() => {
+                    reset(); // Clear path, destination, return to overview
+                    setHasArrived(false);
+                }, 10000); // 10 second delay to let user see arrival
             }
         }
     });

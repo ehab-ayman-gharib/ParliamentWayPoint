@@ -10,12 +10,17 @@ interface AppState {
     destination: Waypoint | null;
     startPoint: [number, number, number];
     isNavigating: boolean;
+    isLoading: boolean;
+    loadingMessage: string;
+    arrivedAt: string | null; // Name of destination when arrived
     path: any[]; // Using any for now, will be Vector3[]
 
     setViewMode: (mode: 'overview' | 'navigation') => void;
     setDestination: (destination: Waypoint | null) => void;
     setStartPoint: (point: [number, number, number]) => void;
     setIsNavigating: (isNavigating: boolean) => void;
+    setIsLoading: (isLoading: boolean, message?: string) => void;
+    setArrivedAt: (name: string | null) => void;
     setPath: (path: any[]) => void;
     reset: () => void;
 }
@@ -25,12 +30,17 @@ export const useStore = create<AppState>((set) => ({
     destination: null,
     startPoint: [12.47, 0.7, 88.7], // Main entrance/lobby start point
     isNavigating: false,
+    isLoading: true,
+    loadingMessage: 'Initializing...',
+    arrivedAt: null,
     path: [],
 
     setViewMode: (mode) => set({ viewMode: mode }),
     setDestination: (destination) => set({ destination }),
     setStartPoint: (point) => set({ startPoint: point }),
     setIsNavigating: (isNavigating) => set({ isNavigating }),
+    setIsLoading: (isLoading, message) => set({ isLoading, loadingMessage: message || '' }),
+    setArrivedAt: (arrivedAt) => set({ arrivedAt }),
     setPath: (path) => set({ path }),
-    reset: () => set({ viewMode: 'overview', destination: null, isNavigating: false, path: [] }),
+    reset: () => set({ viewMode: 'overview', destination: null, isNavigating: false, path: [], arrivedAt: null }),
 }));
