@@ -49,11 +49,12 @@
     "files": [
       "out/**/*",
       "electron/**/*",
-      "package.json"
+      "package.json",
+      "public/icon.png"
     ],
     "win": {
       "target": "portable",
-      "icon": "public/icon.png"
+      "icon": "build/icon.png"
     }
   }
 }

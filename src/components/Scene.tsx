@@ -211,19 +211,6 @@ export default function Scene() {
                 setArrivedAt(destination?.name || 'Destination');
                 console.log('🎯 Arrived at destination!');
 
-                // Set final camera position looking at destination
-                const finalCamPos = agentPos.clone().add(
-                    lastDirection.current.clone().multiplyScalar(-cameraDistance)
-                ).add(new THREE.Vector3(0, cameraHeight, 0));
-                const finalLookTarget = agentPos.clone().add(lastDirection.current.clone().multiplyScalar(10));
-                finalLookTarget.y = agentPos.y + 5;
-
-                controlsRef.current.setLookAt(
-                    finalCamPos.x, finalCamPos.y, finalCamPos.z,
-                    finalLookTarget.x, finalLookTarget.y, finalLookTarget.z,
-                    true
-                );
-
                 // Store timer in ref so it can be cleared
                 resetTimerRef.current = setTimeout(() => {
                     reset(); // Clear path, destination, return to overview
