@@ -7,7 +7,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
 export default function PathLine() {
-    const { path } = useStore();
+    const { path, isNavigating } = useStore();
     const lineRef = useRef<any>(null);
     const [animationProgress, setAnimationProgress] = useState(0);
 
@@ -77,7 +77,9 @@ export default function PathLine() {
         return result.length >= 2 ? result : elevatedPath.slice(0, 2);
     }, [elevatedPath, animationProgress]);
 
-    if (elevatedPath.length < 2) return null;
+    // Hide path line when actively navigating OR no valid path
+    // (This check must come AFTER all hooks to avoid React hooks order error)
+    if (isNavigating || elevatedPath.length < 2) return null;
 
     return (
         <group>

@@ -14,7 +14,7 @@ export class NavigationService {
         walkableSlopeAngle: 35,
         walkableHeight: 15, // ~1.5m
         walkableClimb: 2,
-        walkableRadius: 2.5, // 0.5m radius -> Prunes narrow walls
+        walkableRadius: 40.0, // 1.0m radius -> Keeps paths away from walls
         minRegionArea: 100,  // Cull small islands (wall tops). < 4m^2 removed.
         mergeRegionArea: 20,
         maxSimplificationError: 1.3,

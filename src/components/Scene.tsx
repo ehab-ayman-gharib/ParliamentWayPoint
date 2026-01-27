@@ -76,51 +76,112 @@ export default function Scene() {
         }
     }, [destination, isNavMeshReady, startPoint, setPath]);
 
-    // Handle Camera Transitions
+    // Handle Camera - Overview Mode
     useEffect(() => {
         if (!controlsRef.current || !scene) return;
 
-        if (viewMode === 'overview') {
+        if (viewMode === 'overview' && !isNavigating) {
             const box = new THREE.Box3().setFromObject(scene as THREE.Group);
-            // Top-down view: Camera high above (Y), looking straight down
-            // Small Z offset to match reference angle (not perfectly orthographic)
-            controlsRef.current.setLookAt(0, 400, 150, 0, 0, 0, false);
-            // Then fit to the box for perfect framing
+            const center = box.getCenter(new THREE.Vector3());
+
+            // Top-down view: camera directly above, looking straight down
+            controlsRef.current.setLookAt(
+                center.x, 500, center.z + 50, // Camera position: high above, slight Z offset for perspective
+                center.x, 0, center.z,         // Look at center of building
+                false
+            );
             controlsRef.current.fitToBox(box, true, {
-                paddingLeft: 2,
-                paddingRight: 2,
-                paddingTop: 2,
-                paddingBottom: 2
+                paddingLeft: 0.5,
+                paddingRight: 0.5,
+                paddingTop: 0.5,
+                paddingBottom: 0.5
             });
         }
-    }, [viewMode, scene]); // Also trigger when scene is loaded
+    }, [viewMode, scene, isNavigating]);
 
-    // Navigation Logic Loop
+    // Smooth camera transition when starting navigation
+    useEffect(() => {
+        if (isNavigating && path.length > 0 && controlsRef.current) {
+            // Reset agent position to start point
+            agentPos.set(...startPoint);
+            setCurrentPathIndex(0);
+
+            // Get first path point and calculate initial camera position
+            const firstPoint = path[0];
+            const secondPoint = path[Math.min(1, path.length - 1)];
+
+            // Calculate initial look direction
+            const direction = new THREE.Vector3()
+                .subVectors(secondPoint, firstPoint)
+                .normalize();
+
+            // Camera behind and above the start point
+            const camOffset = direction.clone().multiplyScalar(-25).add(new THREE.Vector3(0, 20, 0));
+            const camPos = new THREE.Vector3(...startPoint).add(camOffset);
+
+            // Smooth transition from overview to navigation view
+            controlsRef.current.setLookAt(
+                camPos.x, camPos.y, camPos.z,
+                firstPoint.x, firstPoint.y + 5, firstPoint.z,
+                true // smooth transition
+            );
+        }
+    }, [isNavigating]);
+
+    // Navigation Logic Loop - Camera follows path
     useFrame((state, delta) => {
         if (isNavigating && path.length > 0 && controlsRef.current) {
             const targetPoint = path[currentPathIndex];
 
-            // Move agent position
-            agentPos.lerp(targetPoint, 0.1);
+            // Constant speed movement (not lerp which slows at corners)
+            const speed = 30; // units per second
+            const direction = new THREE.Vector3()
+                .subVectors(targetPoint, agentPos)
+                .normalize();
 
-            // Camera Director logic
-            const nextPoint = path[Math.min(currentPathIndex + 1, path.length - 1)];
-            const direction = new THREE.Vector3().subVectors(nextPoint, agentPos).normalize();
+            const moveDistance = speed * delta;
+            const distanceToTarget = agentPos.distanceTo(targetPoint);
 
-            const camOffset = direction.clone().multiplyScalar(-10).add(new THREE.Vector3(0, 6, 0));
+            if (distanceToTarget > moveDistance) {
+                // Move toward target at constant speed
+                agentPos.add(direction.multiplyScalar(moveDistance));
+            } else {
+                // Snap to target if very close
+                agentPos.copy(targetPoint);
+            }
+
+            // Calculate direction for camera (look ahead 2 waypoints)
+            const lookAheadIndex = Math.min(currentPathIndex + 2, path.length - 1);
+            const lookAheadPoint = path[lookAheadIndex];
+            const camDirection = new THREE.Vector3()
+                .subVectors(lookAheadPoint, agentPos)
+                .normalize();
+
+            // Camera position: behind and above the agent
+            const cameraHeight = 20;
+            const cameraDistance = 25;
+            const camOffset = camDirection.clone().multiplyScalar(-cameraDistance).add(new THREE.Vector3(0, cameraHeight, 0));
             const camPos = agentPos.clone().add(camOffset);
 
+            // Look ahead of the agent (not at it) - raised to look at horizon
+            const lookTarget = agentPos.clone().add(camDirection.multiplyScalar(20));
+            lookTarget.y = agentPos.y + 8; // Higher look target for better forward view
+
+            // Smooth camera follow
             controlsRef.current.setLookAt(
                 camPos.x, camPos.y, camPos.z,
-                agentPos.x, agentPos.y + 1, agentPos.z,
-                true
+                lookTarget.x, lookTarget.y, lookTarget.z,
+                true // smooth interpolation
             );
 
-            if (agentPos.distanceTo(targetPoint) < 1.0) {
+            // Check if reached current waypoint
+            if (distanceToTarget < 1.0) {
                 if (currentPathIndex < path.length - 1) {
                     setCurrentPathIndex(prev => prev + 1);
                 } else {
+                    // Reached destination
                     setIsNavigating(false);
+                    console.log('🎯 Arrived at destination!');
                 }
             }
         }
