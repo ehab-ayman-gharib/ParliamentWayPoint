@@ -81,18 +81,12 @@ export default function Scene() {
             const box = new THREE.Box3().setFromObject(scene as THREE.Group);
             const center = box.getCenter(new THREE.Vector3());
 
-            // Top-down view: camera directly above, looking straight down
+            // Isometric top-down view - user defined position
             controlsRef.current.setLookAt(
-                center.x, 500, center.z + 50, // Camera position: high above, slight Z offset for perspective
-                center.x, 0, center.z,         // Look at center of building
+                505.9, 946.9, 727.7,        // Camera position (captured from manual adjustment)
+                center.x, 0, center.z,      // Look at center of building
                 false
             );
-            controlsRef.current.fitToBox(box, true, {
-                paddingLeft: 0.5,
-                paddingRight: 0.5,
-                paddingTop: 0.5,
-                paddingBottom: 0.5
-            });
         }
     }, [viewMode, scene, isNavigating]);
 

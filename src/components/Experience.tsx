@@ -126,12 +126,6 @@ function ArrivalOverlay() {
                     justify-content: center;
                     z-index: 1000;
                     pointer-events: none;
-                    animation: fadeIn 0.5s ease-out;
-                }
-                
-                @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
                 }
                 
                 .arrival-card {
@@ -145,18 +139,6 @@ function ArrivalOverlay() {
                         0 0 100px rgba(0, 242, 255, 0.1),
                         inset 0 1px 0 rgba(255, 255, 255, 0.1);
                     backdrop-filter: blur(20px);
-                    animation: scaleIn 0.5s ease-out;
-                }
-                
-                @keyframes scaleIn {
-                    from { 
-                        opacity: 0; 
-                        transform: scale(0.9);
-                    }
-                    to { 
-                        opacity: 1; 
-                        transform: scale(1);
-                    }
                 }
                 
                 .arrival-icon {
@@ -168,12 +150,6 @@ function ArrivalOverlay() {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    animation: pulse 2s infinite;
-                }
-                
-                @keyframes pulse {
-                    0%, 100% { box-shadow: 0 0 0 0 rgba(0, 242, 255, 0.4); }
-                    50% { box-shadow: 0 0 0 20px rgba(0, 242, 255, 0); }
                 }
                 
                 .arrival-icon svg {
