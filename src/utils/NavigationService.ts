@@ -89,11 +89,65 @@ export class NavigationService {
             const points: THREE.Vector3[] = result.path.map(p =>
                 new THREE.Vector3(p.x, p.y, p.z)
             );
-            console.log('✅ Path found with', points.length, 'waypoints');
-            return points;
+
+            // Post-process: Round corners to create more natural walking path
+            const smoothedPath = this.smoothPathCorners(points, 3.0); // 3 meter offset from walls
+
+            console.log('✅ Path found with', smoothedPath.length, 'waypoints (smoothed)');
+            return smoothedPath;
         }
 
         return [];
+    }
+
+    /**
+     * Smooth path corners by pushing corner points away from walls.
+     * This creates a more natural walking path that doesn't hug walls.
+     */
+    private smoothPathCorners(path: THREE.Vector3[], cornerOffset: number): THREE.Vector3[] {
+        if (path.length <= 2) return path;
+
+        const result: THREE.Vector3[] = [path[0]]; // Keep start point
+
+        for (let i = 1; i < path.length - 1; i++) {
+            const prev = path[i - 1];
+            const curr = path[i];
+            const next = path[i + 1];
+
+            // Calculate direction vectors
+            const dir1 = new THREE.Vector3().subVectors(curr, prev).normalize();
+            const dir2 = new THREE.Vector3().subVectors(next, curr).normalize();
+
+            // Calculate angle between segments
+            const dot = dir1.dot(dir2);
+            const angle = Math.acos(Math.max(-1, Math.min(1, dot)));
+
+            // If it's a sharp corner (angle > 45 degrees turn)
+            if (angle > Math.PI / 4) {
+                // Calculate bisector direction (points inward, away from the corner)
+                const bisector = new THREE.Vector3()
+                    .addVectors(dir1, dir2)
+                    .normalize();
+
+                // Push the point inward along the bisector
+                // The sharper the corner, the more we push
+                const pushAmount = cornerOffset * (1 - dot); // More push for sharper corners
+
+                const smoothedPoint = new THREE.Vector3()
+                    .copy(curr)
+                    .add(bisector.multiplyScalar(pushAmount));
+
+                // Keep the original Y height
+                smoothedPoint.y = curr.y;
+
+                result.push(smoothedPoint);
+            } else {
+                result.push(curr);
+            }
+        }
+
+        result.push(path[path.length - 1]); // Keep end point
+        return result;
     }
 
     public createDebugNavMesh(scene: THREE.Group): THREE.Object3D | null {

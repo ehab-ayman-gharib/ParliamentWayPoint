@@ -28,14 +28,14 @@ export default function Scene() {
                 setIsNavMeshReady(ready);
                 console.log('NavMesh Ready:', ready);
 
-                if (ready) {
-                    // VISUAL DEBUG: Show the NavMesh
-                    const debugMesh = navService.createDebugNavMesh(scene as THREE.Group);
-                    if (debugMesh) {
-                        (scene as THREE.Group).add(debugMesh);
-                        console.log('✅ Added Debug NavMesh to scene');
-                    }
-                }
+                // if (ready) {
+                //     // VISUAL DEBUG: Show the NavMesh (disabled for clean view)
+                //     const debugMesh = navService.createDebugNavMesh(scene as THREE.Group);
+                //     if (debugMesh) {
+                //         (scene as THREE.Group).add(debugMesh);
+                //         console.log('✅ Added Debug NavMesh to scene');
+                //     }
+                // }
             });
         }
     }, [scene]);
@@ -131,26 +131,17 @@ export default function Scene() {
             {/* Removed Center to ensure Unity coordinates match Navigation Space */}
             <primitive
                 object={scene}
-                onClick={(e: any) => {
-                    // Stop propagation to prevent multiple clicks
-                    e.stopPropagation();
-
-                    // Get the clicked point in 3D space
-                    const point = e.point;
-
-                    // Round to 2 decimal places for cleaner coordinates
-                    const x = Math.round(point.x * 100) / 100;
-                    const y = 0; // Keep Y at 0 for floor level
-                    const z = Math.round(point.z * 100) / 100;
-
-                    console.log('🎯 Clicked position:', { x, y, z });
-                    console.log('📋 Copy this to useStore.ts:');
-                    console.log(`   startPoint: [${x}, ${y}, ${z}],`);
-
-                    // Update the start point in the store
-                    const { setStartPoint } = useStore.getState();
-                    setStartPoint([x, y, z]);
-                }}
+            // onClick disabled - use dropdown to select destinations
+            // onClick={(e: any) => {
+            //     e.stopPropagation();
+            //     const point = e.point;
+            //     const x = Math.round(point.x * 100) / 100;
+            //     const y = 0;
+            //     const z = Math.round(point.z * 100) / 100;
+            //     console.log('🎯 Clicked position:', { x, y, z });
+            //     const { setStartPoint } = useStore.getState();
+            //     setStartPoint([x, y, z]);
+            // }}
             />
 
             <Environment preset="city" />
