@@ -1,0 +1,36 @@
+import { create } from 'zustand';
+
+interface Waypoint {
+    name: string;
+    position: [number, number, number];
+}
+
+interface AppState {
+    viewMode: 'overview' | 'navigation';
+    destination: Waypoint | null;
+    startPoint: [number, number, number];
+    isNavigating: boolean;
+    path: any[]; // Using any for now, will be Vector3[]
+
+    setViewMode: (mode: 'overview' | 'navigation') => void;
+    setDestination: (destination: Waypoint | null) => void;
+    setStartPoint: (point: [number, number, number]) => void;
+    setIsNavigating: (isNavigating: boolean) => void;
+    setPath: (path: any[]) => void;
+    reset: () => void;
+}
+
+export const useStore = create<AppState>((set) => ({
+    viewMode: 'overview',
+    destination: null,
+    startPoint: [12.47, 0.7, 88.7], // Main entrance/lobby start point
+    isNavigating: false,
+    path: [],
+
+    setViewMode: (mode) => set({ viewMode: mode }),
+    setDestination: (destination) => set({ destination }),
+    setStartPoint: (point) => set({ startPoint: point }),
+    setIsNavigating: (isNavigating) => set({ isNavigating }),
+    setPath: (path) => set({ path }),
+    reset: () => set({ viewMode: 'overview', destination: null, isNavigating: false, path: [] }),
+}));
