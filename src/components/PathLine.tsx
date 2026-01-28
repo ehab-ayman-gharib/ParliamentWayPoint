@@ -4,9 +4,24 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 
-const MapPin = ({ position }: { position: THREE.Vector3 }) => {
+const MapPin = ({ position, color = '#0088ff' }: { position: THREE.Vector3, color?: string }) => {
     const { scene } = useGLTF('./map_pin.glb');
     const groupRef = useRef<THREE.Group>(null);
+
+    // Clone and color the scene
+    const clonedScene = useMemo(() => {
+        const clone = scene.clone();
+        clone.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+                child.material = new THREE.MeshStandardMaterial({
+                    color: color,
+                    roughness: 0.5,
+                    metalness: 0.5
+                });
+            }
+        });
+        return clone;
+    }, [scene, color]);
 
     // ⚙️ MANUAL ADJUSTMENT: Change rotation values here [x, y, z] in radians
     const pinRotation: [number, number, number] = [0, Math.PI / 7, 0];
@@ -37,7 +52,7 @@ const MapPin = ({ position }: { position: THREE.Vector3 }) => {
 
     return (
         <group ref={groupRef} position={finalPosition} rotation={pinRotation} scale={pinScale}>
-            <primitive object={scene.clone()} />
+            <primitive object={clonedScene} />
         </group>
     );
 };
@@ -159,12 +174,21 @@ export default function PathLine() {
             : new THREE.Vector3(p.x, p.y + 6.0, p.z);
     }, [path]);
 
+    const endPos = useMemo(() => {
+        if (!path || path.length < 1) return null;
+        const p = path[path.length - 1];
+        return p instanceof THREE.Vector3
+            ? new THREE.Vector3(p.x, p.y + 6.0, p.z)
+            : new THREE.Vector3(p.x, p.y + 6.0, p.z);
+    }, [path]);
+
     if (isNavigating || !path || path.length < 2) return null;
 
     return (
         <group>
             <Suspense fallback={null}>
-                {startPos && <MapPin position={startPos} />}
+                {startPos && <MapPin position={startPos} color="#0088ff" />}
+                {endPos && <MapPin position={endPos} color="#ff0000" />}
             </Suspense>
 
             {spacedPoints.map((pos, i) => (
