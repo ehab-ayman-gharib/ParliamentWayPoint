@@ -8,10 +8,16 @@ import { useStore } from '@/store/useStore';
 import PathLine from './PathLine';
 import { navService } from '@/utils/NavigationService';
 
+// Global flag to prevent re-initialization on remounts
+let hasSceneInitialized = false;
+
 export default function Scene() {
     const { scene, nodes } = useGLTF('./SM_Parliament.glb');
     const controlsRef = useRef<CameraControls>(null);
     const resetTimerRef = useRef<NodeJS.Timeout | null>(null);
+    // Track last calculation to prevent double execution
+    const lastCalculatedRef = useRef<string | null>(null);
+
     const { viewMode, isNavigating, destination, startPoint, setPath, path, setIsNavigating, reset, setIsLoading, setArrivedAt } = useStore();
 
     const [currentPathIndex, setCurrentPathIndex] = useState(0);
@@ -29,7 +35,8 @@ export default function Scene() {
 
     // Initialize NavMesh and Log Size
     useEffect(() => {
-        if (scene) {
+        if (scene && !hasSceneInitialized) {
+            hasSceneInitialized = true;
             setIsLoading(true, 'Loading 3D Model...');
 
             const box = new THREE.Box3().setFromObject(scene as THREE.Group);
@@ -46,13 +53,19 @@ export default function Scene() {
                     // Artificial delay to prevent "flicker" finish
                     setTimeout(() => {
                         setIsLoading(false);
-                    }, 2000);
+                    }, 500); // Reduced from 2000ms for snappier feel
 
                     console.log('NavMesh Ready:', ready);
                 });
             }, 100);
+        } else if (hasSceneInitialized && !isNavMeshReady) {
+            // If we re-mounted but already initialized globally, just ensure local state matches
+            setIsNavMeshReady(true);
+            setIsLoading(false);
         }
     }, [scene]);
+
+    // reset hasSceneInitialized on unmount if needed? No, we want it persistent for the session.
 
     // Handle Roof Visibility based on viewMode
     useEffect(() => {
@@ -72,6 +85,12 @@ export default function Scene() {
     // Handle Destination Select & Pathfinding
     useEffect(() => {
         if (destination && isNavMeshReady) {
+            // Prevent double calculation if destination hasn't changed
+            const destKey = `${destination.name}-${startPoint.join(',')}`;
+            if (lastCalculatedRef.current === destKey) return;
+
+            lastCalculatedRef.current = destKey;
+
             const endPos = new THREE.Vector3(...destination.position);
             const startPos = new THREE.Vector3(...startPoint); // Use actual start point from store
 

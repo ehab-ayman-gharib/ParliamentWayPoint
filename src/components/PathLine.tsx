@@ -1,152 +1,179 @@
-'use client';
-
 import { useStore } from '@/store/useStore';
-import { useMemo, useRef, useState, useEffect } from 'react';
-import { Line } from '@react-three/drei';
-import { useFrame } from '@react-three/fiber';
+import { useMemo, useRef, Suspense } from 'react';
 import * as THREE from 'three';
+import { useFrame } from '@react-three/fiber';
+import { Text3D, Center } from '@react-three/drei';
+
+const TextLabel = ({ position }: { position: THREE.Vector3 }) => {
+    // ⚙️ MANUAL ADJUSTMENT: Change rotation values here [x, y, z] in radians
+    // -Math.PI / 2 on X axis makes it lie flat on the ground (like the path dots)
+    // Y axis rotation aligns it with the map grid
+    const textRotation: [number, number, number] = [-Math.PI / 2, 0, Math.PI / 7];
+
+    // ⚙️ MANUAL ADJUSTMENT: Change position offset here [x, y, z]
+    const positionOffset: [number, number, number] = [-10, 0, -10];
+
+    const finalPosition = new THREE.Vector3(
+        position.x + positionOffset[0],
+        position.y + positionOffset[1],
+        position.z + positionOffset[2]
+    );
+
+    return (
+        <group position={finalPosition} rotation={textRotation}>
+            <Center>
+                <Text3D
+                    font="./Roboto Medium_Regular.json"
+                    size={10}
+                    height={2}
+                    curveSegments={12}
+                    bevelEnabled
+                    bevelThickness={0.5}
+                    bevelSize={0.1}
+                    bevelOffset={0}
+                    bevelSegments={5}
+                >
+                    You are Here!
+                    <meshStandardMaterial
+                        color="#000000"
+                        roughness={0.8}
+                        metalness={0.1}
+                        envMapIntensity={0.3}
+                    />
+                </Text3D>
+            </Center>
+        </group>
+    );
+};
+
+const Dot = ({ position, index, total }: { position: THREE.Vector3, index: number, total: number }) => {
+    const matRef = useRef<THREE.MeshBasicMaterial>(null);
+    const birthTime = useRef<number>(-1);
+
+    useFrame((state) => {
+        if (!matRef.current) return;
+
+        const time = state.clock.getElapsedTime();
+        if (birthTime.current === -1) birthTime.current = time;
+
+        const age = time - birthTime.current;
+        const indexDelay = index * 0.05; // 0.05s per dot reveal
+
+        // 1. Entrance Phase: Invisible before its turn
+        if (age < indexDelay) {
+            matRef.current.opacity = 0;
+            return;
+        }
+
+        // 2. Transition Phase: Fade in to base opacity
+        const fadeInDuration = 0.5;
+        const timeSinceReveal = age - indexDelay;
+
+        let baseOpacity = 0.3;
+        if (timeSinceReveal < fadeInDuration) {
+            baseOpacity = THREE.MathUtils.lerp(0, 0.3, timeSinceReveal / fadeInDuration);
+        }
+
+        // 3. Wave Phase: Start only after entire path is potentially revealed
+        const totalRevealTime = total * 0.05;
+        const waveStartTime = totalRevealTime + 0.5; // Wait a bit after last dot
+
+        let finalOpacity = baseOpacity;
+
+        if (age > waveStartTime) {
+            const waveAge = age - waveStartTime;
+            const speed = 5.0;
+            const cycle = (waveAge * speed) % (total + 8);
+            const dist = Math.abs(cycle - index);
+
+            if (dist < 4) {
+                // Add wave intensity to base opacity
+                const waveIntensity = 0.7 * (1 - (dist / 4));
+                finalOpacity = baseOpacity + waveIntensity;
+            }
+        }
+
+        matRef.current.opacity = Math.min(finalOpacity, 1.0);
+    });
+
+    return (
+        <mesh position={position} rotation={[-Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[3, 32]} />
+            <meshBasicMaterial
+                ref={matRef}
+                color="#0088ff"
+                transparent
+                opacity={0}
+                depthTest={false}
+            />
+        </mesh>
+    );
+};
 
 export default function PathLine() {
     const { path, isNavigating } = useStore();
-    const lineRef = useRef<any>(null);
-    const [animationProgress, setAnimationProgress] = useState(0);
 
-    // Lift path points above floor to prevent z-fighting
-    const elevatedPath = useMemo(() => {
+    // Generate a unique ID when path changes to force reset of Dot animations
+    const pathId = useMemo(() => Math.random().toString(36).substr(2, 9), [path]);
+
+    const spacedPoints = useMemo(() => {
         if (!path || path.length < 2) return [];
-        return path.map(p => {
-            if (p instanceof THREE.Vector3) {
-                return new THREE.Vector3(p.x, p.y + 8.0, p.z); // Lift 8.0 units above floor (eye level)
+
+        const points: THREE.Vector3[] = [];
+        const spacing = 12.0; // Distance between dots
+        let currentDist = 0; // Total distance traversed
+
+        let nextPointDist = spacing; // First dot appears after 'spacing' distance
+
+        for (let i = 0; i < path.length - 1; i++) {
+            const start = path[i];
+            const end = path[i + 1];
+
+            // Ensure we are working with Vector3
+            const p1 = start instanceof THREE.Vector3 ? start : new THREE.Vector3(start.x, start.y, start.z);
+            const p2 = end instanceof THREE.Vector3 ? end : new THREE.Vector3(end.x, end.y, end.z);
+
+            const segmentLength = p1.distanceTo(p2);
+
+            // While the next point falls within this segment
+            while (nextPointDist <= currentDist + segmentLength) {
+                const distanceInSegment = nextPointDist - currentDist;
+                const alpha = distanceInSegment / segmentLength;
+
+                // Interpolate position
+                const point = new THREE.Vector3().lerpVectors(p1, p2, alpha);
+                // Lift slightly above floor (approx 0.3 units) to avoid z-fighting but look "2D" on ground
+                point.y += 0.3;
+
+                points.push(point);
+                nextPointDist += spacing;
             }
-            return p;
-        });
+
+            currentDist += segmentLength;
+        }
+
+        return points;
     }, [path]);
 
-    // Reset animation when path changes
-    useEffect(() => {
-        setAnimationProgress(0);
+    const startPos = useMemo(() => {
+        if (!path || path.length < 1) return null;
+        const p = path[0];
+        return p instanceof THREE.Vector3
+            ? new THREE.Vector3(p.x, p.y + 6.0, p.z) // Lifted significantly for visibility over walls
+            : new THREE.Vector3(p.x, p.y + 6.0, p.z);
     }, [path]);
 
-    // Animate dash offset for flowing effect (START -> GOAL direction)
-    useFrame((state, delta) => {
-        if (lineRef.current?.material) {
-            // Positive offset = flows from start to end
-            lineRef.current.material.dashOffset += 0.08;
-        }
-
-        // Progressive reveal animation
-        if (animationProgress < 1) {
-            setAnimationProgress(prev => Math.min(prev + delta * 0.8, 1));
-        }
-    });
-
-    // Calculate partial path for reveal animation
-    const animatedPath = useMemo(() => {
-        if (elevatedPath.length < 2 || animationProgress >= 1) return elevatedPath;
-
-        // Calculate total path length
-        let totalLength = 0;
-        const segments: number[] = [0];
-
-        for (let i = 1; i < elevatedPath.length; i++) {
-            const p1 = elevatedPath[i - 1] as THREE.Vector3;
-            const p2 = elevatedPath[i] as THREE.Vector3;
-            totalLength += p1.distanceTo(p2);
-            segments.push(totalLength);
-        }
-
-        const targetLength = totalLength * animationProgress;
-        const result: THREE.Vector3[] = [elevatedPath[0] as THREE.Vector3];
-
-        for (let i = 1; i < elevatedPath.length; i++) {
-            if (segments[i] <= targetLength) {
-                result.push(elevatedPath[i] as THREE.Vector3);
-            } else {
-                // Interpolate final point
-                const p1 = elevatedPath[i - 1] as THREE.Vector3;
-                const p2 = elevatedPath[i] as THREE.Vector3;
-                const segmentLength = segments[i] - segments[i - 1];
-                const remainingLength = targetLength - segments[i - 1];
-                const t = remainingLength / segmentLength;
-
-                result.push(new THREE.Vector3().lerpVectors(p1, p2, t));
-                break;
-            }
-        }
-
-        return result.length >= 2 ? result : elevatedPath.slice(0, 2);
-    }, [elevatedPath, animationProgress]);
-
-    // Hide path line when actively navigating OR no valid path
-    // (This check must come AFTER all hooks to avoid React hooks order error)
-    if (isNavigating || elevatedPath.length < 2) return null;
+    if (isNavigating || !path || path.length < 2) return null;
 
     return (
         <group>
-            {/* Base shadow/ambient layer */}
-            <Line
-                points={animatedPath}
-                color="#004466"
-                lineWidth={25}
-                transparent
-                opacity={0.2}
-                depthTest={false}
-            />
+            <Suspense fallback={null}>
+                {startPos && <TextLabel position={startPos} />}
+            </Suspense>
 
-            {/* Outer glow - wide and soft */}
-            <Line
-                points={animatedPath}
-                color="#00d4ff"
-                lineWidth={20}
-                transparent
-                opacity={0.25}
-                depthTest={false}
-            />
-
-            {/* Middle glow layer */}
-            <Line
-                points={animatedPath}
-                color="#00e5ff"
-                lineWidth={14}
-                transparent
-                opacity={0.4}
-                depthTest={false}
-            />
-
-            {/* Main solid path */}
-            <Line
-                points={animatedPath}
-                color="#00ffff"
-                lineWidth={8}
-                transparent
-                opacity={0.9}
-                depthTest={false}
-            />
-
-            {/* Animated flowing arrows/dashes - moves toward goal */}
-            <Line
-                ref={lineRef}
-                points={animatedPath}
-                color="#ffffff"
-                lineWidth={5}
-                transparent
-                opacity={1}
-                dashed
-                dashSize={2}
-                dashOffset={0}
-                gapSize={3}
-                depthTest={false}
-            />
-
-            {/* Bright center core */}
-            <Line
-                points={animatedPath}
-                color="#ffffff"
-                lineWidth={2}
-                transparent
-                opacity={0.95}
-                depthTest={false}
-            />
+            {spacedPoints.map((pos, i) => (
+                <Dot key={`${i}-${pathId}`} position={pos} index={i} total={spacedPoints.length} />
+            ))}
         </group>
     );
 }

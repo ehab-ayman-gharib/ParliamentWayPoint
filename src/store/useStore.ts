@@ -28,7 +28,7 @@ interface AppState {
 export const useStore = create<AppState>((set) => ({
     viewMode: 'overview',
     destination: null,
-    startPoint: [12.47, 0.7, 88.7], // Main entrance/lobby start point
+    startPoint: [57, 0.7, 78], // Main entrance/lobby start point
     isNavigating: false,
     isLoading: true,
     loadingMessage: 'Initializing...',
