@@ -39,7 +39,10 @@ export const useStore = create<AppState>((set) => ({
     setDestination: (destination) => set({ destination }),
     setStartPoint: (point) => set({ startPoint: point }),
     setIsNavigating: (isNavigating) => set({ isNavigating }),
-    setIsLoading: (isLoading, message) => set({ isLoading, loadingMessage: message || '' }),
+    setIsLoading: (isLoading, message) => {
+        console.log('📝 setIsLoading called:', isLoading, message);
+        set({ isLoading, loadingMessage: message || '' });
+    },
     setArrivedAt: (arrivedAt) => set({ arrivedAt }),
     setPath: (path) => set({ path }),
     reset: () => set({ viewMode: 'overview', destination: null, isNavigating: false, path: [], arrivedAt: null }),

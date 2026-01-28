@@ -37,6 +37,7 @@ export default function Scene() {
     useEffect(() => {
         if (scene && !hasSceneInitialized) {
             hasSceneInitialized = true;
+            console.log('🎬 Starting NavMesh initialization...');
             setIsLoading(true, 'Loading 3D Model...');
 
             const box = new THREE.Box3().setFromObject(scene as THREE.Group);
@@ -44,25 +45,21 @@ export default function Scene() {
             console.log('Model Bounding Box Size:', size);
 
             setIsLoading(true, 'Building Navigation Mesh...');
+            console.log('⏳ NavMesh baking started...');
 
             // Delay baking slightly to let UI update
             setTimeout(() => {
                 navService.init(scene as THREE.Group).then(ready => {
+                    console.log('✅ NavMesh init completed, ready:', ready);
                     setIsNavMeshReady(ready);
-
-                    // Artificial delay to prevent "flicker" finish
-                    setTimeout(() => {
-                        setIsLoading(false);
-                    }, 500); // Reduced from 2000ms for snappier feel
-
-                    console.log('NavMesh Ready:', ready);
+                    // Hide loading immediately when NavMesh is ready
+                    console.log('🎉 Hiding loading screen now');
+                    setIsLoading(false);
                 });
             }, 100);
-        } else if (hasSceneInitialized && !isNavMeshReady) {
-            // If we re-mounted but already initialized globally, just ensure local state matches
-            setIsNavMeshReady(true);
-            setIsLoading(false);
         }
+        // Note: Removed the else-if that was causing premature loading dismissal
+        // The global flag ensures this only runs once per session
     }, [scene]);
 
     // reset hasSceneInitialized on unmount if needed? No, we want it persistent for the session.

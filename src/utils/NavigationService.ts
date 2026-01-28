@@ -43,6 +43,10 @@ export class NavigationService {
 
             console.log(`🔨 Baking NavMesh with ${meshes.length} meshes...`);
 
+            // Add a small delay to ensure the loading UI is displayed
+            // before the synchronous baking operation blocks the main thread
+            await new Promise(resolve => setTimeout(resolve, 200));
+
             const result = threeToSoloNavMesh(meshes, this.config);
             if (!result || !result.navMesh) {
                 console.error('❌ Baking failed: No NavMesh generated');
@@ -54,6 +58,10 @@ export class NavigationService {
 
             this.isReady = true;
             console.log('✅ Recast NavMesh Baked Successfully!');
+
+            // Add another small delay to ensure the baking is fully complete
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             return true;
 
         } catch (error) {
