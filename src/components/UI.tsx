@@ -26,14 +26,17 @@ export default function UI() {
     }, [isNavigating, destination, viewMode, setViewMode]);
 
     const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        console.log('🎯 Dropdown changed to:', e.target.value);
         const selected = destinations.find(d => d.name === e.target.value);
         if (selected) {
+            console.log('✅ Setting destination to:', selected.name);
             setArrived(false);
             setDestination({
                 name: selected.name,
                 position: selected.position as [number, number, number]
             });
         } else {
+            console.log('❌ No destination found, clearing (value was:', e.target.value, ')');
             setDestination(null);
         }
     };

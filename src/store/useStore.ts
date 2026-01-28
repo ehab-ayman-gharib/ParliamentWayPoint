@@ -36,7 +36,11 @@ export const useStore = create<AppState>((set) => ({
     path: [],
 
     setViewMode: (mode) => set({ viewMode: mode }),
-    setDestination: (destination) => set({ destination }),
+    setDestination: (destination) => {
+        console.log('🗺️ setDestination called with:', destination?.name || 'null');
+        console.trace('Call stack:');
+        set({ destination });
+    },
     setStartPoint: (point) => set({ startPoint: point }),
     setIsNavigating: (isNavigating) => set({ isNavigating }),
     setIsLoading: (isLoading, message) => {

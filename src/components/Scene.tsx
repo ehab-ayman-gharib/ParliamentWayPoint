@@ -33,6 +33,14 @@ export default function Scene() {
         }
     }, [isNavigating]);
 
+    // Clear path calculation cache when destination is reset
+    useEffect(() => {
+        if (!destination) {
+            console.log('🧹 Clearing path calculation cache');
+            lastCalculatedRef.current = null;
+        }
+    }, [destination]);
+
     // Initialize NavMesh and Log Size
     useEffect(() => {
         if (scene && !hasSceneInitialized) {
@@ -88,6 +96,16 @@ export default function Scene() {
 
             lastCalculatedRef.current = destKey;
 
+            // Reset arrival state when selecting new destination
+            setHasArrived(false);
+
+            // Clear any pending arrival timer
+            if (resetTimerRef.current) {
+                console.log('⏹️ Clearing pending arrival timer');
+                clearTimeout(resetTimerRef.current);
+                resetTimerRef.current = null;
+            }
+
             const endPos = new THREE.Vector3(...destination.position);
             const startPos = new THREE.Vector3(...startPoint); // Use actual start point from store
 
@@ -102,6 +120,7 @@ export default function Scene() {
                 console.warn('Pathfinding failed, using direct line');
                 // Fallback: direct line if pathfinding fails or mesh is sparse
                 setPath([startPos, endPos]);
+                setCurrentPathIndex(0);
             }
         }
     }, [destination, isNavMeshReady, startPoint, setPath]);
@@ -221,11 +240,12 @@ export default function Scene() {
         if (distanceToTarget < 1.0) {
             if (currentPathIndex < path.length - 1) {
                 setCurrentPathIndex(prev => prev + 1);
-            } else {
+            } else if (isNavigating && !hasArrived) {
                 // Reached destination - freeze camera and schedule reset
+                // Double-check isNavigating to prevent false arrivals
+                console.log('🎯 Arrived at destination! isNavigating:', isNavigating, 'hasArrived:', hasArrived);
                 setHasArrived(true);
                 setArrivedAt(destination?.name || 'Destination');
-                console.log('🎯 Arrived at destination!');
 
                 // Store timer in ref so it can be cleared
                 resetTimerRef.current = setTimeout(() => {
