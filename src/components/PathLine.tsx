@@ -2,16 +2,24 @@ import { useStore } from '@/store/useStore';
 import { useMemo, useRef, Suspense } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Text3D, Center } from '@react-three/drei';
+import { useGLTF } from '@react-three/drei';
 
-const TextLabel = ({ position }: { position: THREE.Vector3 }) => {
+const MapPin = ({ position }: { position: THREE.Vector3 }) => {
+    const { scene } = useGLTF('./map_pin.glb');
+    const groupRef = useRef<THREE.Group>(null);
+
     // ⚙️ MANUAL ADJUSTMENT: Change rotation values here [x, y, z] in radians
-    // -Math.PI / 2 on X axis makes it lie flat on the ground (like the path dots)
-    // Y axis rotation aligns it with the map grid
-    const textRotation: [number, number, number] = [-Math.PI / 2, 0, Math.PI / 7];
+    const pinRotation: [number, number, number] = [0, Math.PI / 7, 0];
 
     // ⚙️ MANUAL ADJUSTMENT: Change position offset here [x, y, z]
-    const positionOffset: [number, number, number] = [-10, 0, -10];
+    const positionOffset: [number, number, number] = [0, 7, 0];
+
+    // ⚙️ MANUAL ADJUSTMENT: Change scale (uniform scaling)
+    const pinScale = 35;
+
+    // ⚙️ MANUAL ADJUSTMENT: Pulsing animation settings
+    const pulseSpeed = 4; // Speed of the pulse (higher = faster)
+    const pulseAmount = 1; // How much to move up/down
 
     const finalPosition = new THREE.Vector3(
         position.x + positionOffset[0],
@@ -19,29 +27,17 @@ const TextLabel = ({ position }: { position: THREE.Vector3 }) => {
         position.z + positionOffset[2]
     );
 
+    // Animate the pin with a smooth up/down pulse
+    useFrame((state) => {
+        if (groupRef.current) {
+            const time = state.clock.getElapsedTime();
+            groupRef.current.position.y = finalPosition.y + Math.sin(time * pulseSpeed) * pulseAmount;
+        }
+    });
+
     return (
-        <group position={finalPosition} rotation={textRotation}>
-            <Center>
-                <Text3D
-                    font="./Roboto Medium_Regular.json"
-                    size={10}
-                    height={2}
-                    curveSegments={12}
-                    bevelEnabled
-                    bevelThickness={0.5}
-                    bevelSize={0.1}
-                    bevelOffset={0}
-                    bevelSegments={5}
-                >
-                    You are Here!
-                    <meshStandardMaterial
-                        color="#000000"
-                        roughness={0.8}
-                        metalness={0.1}
-                        envMapIntensity={0.3}
-                    />
-                </Text3D>
-            </Center>
+        <group ref={groupRef} position={finalPosition} rotation={pinRotation} scale={pinScale}>
+            <primitive object={scene.clone()} />
         </group>
     );
 };
@@ -168,7 +164,7 @@ export default function PathLine() {
     return (
         <group>
             <Suspense fallback={null}>
-                {startPos && <TextLabel position={startPos} />}
+                {startPos && <MapPin position={startPos} />}
             </Suspense>
 
             {spacedPoints.map((pos, i) => (
